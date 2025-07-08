@@ -156,6 +156,16 @@ class Main:
                 ax.set_ylabel("Minor Axis")
                 ax.grid(True)
 
+                slopes = [0.2, 0.4, 0.8, 1.0, 1.5, 2]
+                x_min, x_max = ax.get_xlim()
+                x_vals = np.linspace(x_min, x_max, 100)
+
+                for slope in slopes:
+                    y_vals = slope * x_vals
+                    ax.plot(x_vals, y_vals, linestyle='--', linewidth=1, label=f"AR = {slope}")
+                ax.legend()
+                
+
 
             fig.suptitle(f"AR - {key}")
 

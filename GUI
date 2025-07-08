@@ -1,17 +1,44 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel
+from pathlib import Path
 
-class MainWindow(QMainWindow):
+class MainWindow(QWidget):
 
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Crystal Processing GUI")
 
-app = QApplication([])
+        layout = QGridLayout()
+        self.setLayout(layout)
 
-window = MainWindow()
-window.show()
+        file_browser_btn = QPushButton ("Browse")
+        file_browser_btn.clicked.connect(self.open_file_dialog)
+        self.filename_edit = QLineEdit()
+
+        layout.addWidget(QLabel('File:'), 0, 0)
+
+        layout.addWidget(self.filename_edit, 0, 1)
+        layout.addWidget(file_browser_btn, 0, 2)
+
+        self.show()
 
 
-#exit out of window
-app.exec()
+    def open_file_dialog(self):
+
+        filename, x = QFileDialog.getOpenFileName(
+            self,
+            "Select a File",
+            "",
+            "JSON (*.json)"
+        )
+        if filename:
+            path = Path(filename)
+            self.filename_edit.setText(str(path))
+
+
+
+if __name__ == '__main__':
+    app = QApplication([])
+    window = MainWindow()
+    #exit out of window
+    app.exec()
