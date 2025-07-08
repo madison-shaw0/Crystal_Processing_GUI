@@ -1,24 +1,73 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox
 from pathlib import Path
 
 class MainWindow(QWidget):
+
+#notes: fix spacing for scales so it stands out from filepath
+#       add save filepath for images, allow user to make new folder if needed
+#       connect to main class
 
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Crystal Processing GUI")
+        self.layout = QGridLayout()
 
-        layout = QGridLayout()
-        self.setLayout(layout)
+        self.tabs = QTabWidget()
+        self.main = QWidget()
+        self.graphs = QWidget()
 
+        self.tabs.setTabPosition(QTabWidget.North)
+        self.tabs.addTab(self.main, "Main")
+        self.tabs.addTab(self.graphs, "Graphs")
+
+
+        # Adding elements to Main tab
+        self.main.layout = QGridLayout()
+
+        #make file browser button
         file_browser_btn = QPushButton ("Browse")
         file_browser_btn.clicked.connect(self.open_file_dialog)
         self.filename_edit = QLineEdit()
 
-        layout.addWidget(QLabel('File:'), 0, 0)
+        #make confirm scales button
+        scales_confirm_btn = QPushButton ("Confirm All")
+        scales_confirm_btn.clicked.connect(self.confirm_scales)
 
-        layout.addWidget(self.filename_edit, 0, 1)
-        layout.addWidget(file_browser_btn, 0, 2)
+        #adding buttons to main tab grid layout
+        self.main.layout.addWidget(QLabel('File:'), 0, 0)
+        self.main.layout.addWidget(self.filename_edit, 0, 1)
+        self.main.layout.addWidget(file_browser_btn, 0, 2)
+        self.main.layout.addWidget(QLabel('Scales'), 1, 0)
+        self.main.layout.addWidget(QLabel("NA165_139"), 2, 0)
+        self.main.layout.addWidget(QLineEdit("2.97"), 2, 1)  #example for now
+        self.main.layout.addWidget(scales_confirm_btn, 3, 0)
+        self.main.setLayout(self.main.layout)
+
+
+
+        #adding elements to Graphs tab
+        self.graphs.layout=QGridLayout()
+
+        #creating checkboxes for different graph options
+        self.area_checkbox = QCheckBox(text="Area Graph")
+        self.perimeter_checkbox = QCheckBox(text="Perimeter Graph")
+        self.AR_checkbox = QCheckBox(text="Aspect Ratio Graph")
+        self.area_checkbox.stateChanged.connect(self.area_graph_selected)
+
+
+        #adding to graphs layout
+        self.graphs.layout.addWidget(QLabel("Select Save Filepath:"), 0, 0)
+        self.graphs.layout.addWidget(QLabel("Select graphs:"), 2, 0)
+        self.graphs.layout.addWidget(self.area_checkbox, 3, 0)
+        self.graphs.layout.addWidget(self.perimeter_checkbox, 4, 0)
+        self.graphs.layout.addWidget(self.AR_checkbox, 5, 0)
+
+        self.graphs.setLayout(self.graphs.layout)
+
+
+        self.layout.addWidget(self.tabs)
+        self.setLayout(self.layout)
 
         self.show()
 
@@ -34,6 +83,19 @@ class MainWindow(QWidget):
         if filename:
             path = Path(filename)
             self.filename_edit.setText(str(path))
+
+
+    def confirm_scales(self):
+        print("confirmed")
+        #end: should save new scales to dictionary in main class
+
+    
+    def area_graph_selected(self): #base GUI design off main class -> list of available graphs. one func for all
+        if self.area_checkbox.isChecked():
+            print("area graph")
+        else:
+            print("no area graph")
+
 
 
 
