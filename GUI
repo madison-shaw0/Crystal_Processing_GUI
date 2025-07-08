@@ -1,0 +1,17 @@
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget
+
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Crystal Processing GUI")
+
+app = QApplication([])
+
+window = MainWindow()
+window.show()
+
+
+#exit out of window
+app.exec()
