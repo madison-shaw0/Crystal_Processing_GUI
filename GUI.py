@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox
 from PyQt5.QtChart import QChart, QChartView, QPieSeries, QPieSlice
+from PyQt5.QtGui import QColor
 from pathlib import Path
 from Main import Main
 
@@ -68,6 +69,10 @@ class MainTab(QWidget):
         json_load_btn = QPushButton ("Load JSONs")
         json_load_btn.clicked.connect(self.load_files)
 
+        # make Save Changes button
+        save_changes_btn = QPushButton("Save Changes")
+        save_changes_btn.clicked.connect(self.save_scale_values)
+
 
         #adding buttons to main tab grid layout
         self.layout.addWidget(QLabel('JSON Annotations File:'), 0, 0)
@@ -81,8 +86,7 @@ class MainTab(QWidget):
         self.layout.addWidget(json_load_btn, 2, 0)
 
         self.layout.addWidget(QLabel('Scales'), 3, 0)
-        #layout.addWidget(QLabel("NA165_139"), 4, 0)
-        #layout.addWidget(QLineEdit("2.97"), 4, 1)  #example for now
+        self.layout.addWidget(save_changes_btn, 3, 1)
 
         self.setLayout(self.layout)
 
@@ -108,16 +112,25 @@ class MainTab(QWidget):
         if json_path and scales_path:
             self.parent.main_obj = Main(json_path, scales_path)
             print ("Main object created and stored")
-
         
-        self.update_scales()
+        self.load_scales()
 
-    #updates scales and values based on JSON files
-    def update_scales(self):
+
+
+    #loads scales and values based on JSON files
+    def load_scales(self):
         i = 4
-        for key, value in self.parent.main_obj.scales_dict.items():
+
+        for key in self.parent.main_obj.point_dict.keys():
             self.layout.addWidget(QLabel(key), i, 0)
-            self.layout.addWidget(QLineEdit(str(value)), i, 1)
+            header = (key[0:9])
+
+            #if group of images (ex. NA165-136) is already in scales.json, populates box with value
+            if header in self.parent.main_obj.scales_dict.keys():
+                self.layout.addWidget(QLineEdit(str(self.parent.main_obj.scales_dict[header])), i, 1)
+            else:
+                self.layout.addWidget(QLineEdit(), i, 1)
+
             i+=1
 
 
@@ -130,10 +143,46 @@ class InfoTab(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.layout=QGridLayout()
+        self.setLayout(self.layout)
 
-        #adding elements to Info tab
-        #self.info.layout=QGridLayout()
-        #series = QPieSeries
+        test_btn = QPushButton("press me!!")
+        test_btn.clicked.connect(lambda: self.create_pie_chart("NA165-184_Image5"))
+        
+        self.layout.addWidget(test_btn, 0, 0)
+        
+
+    def create_pie_chart(self, img_name):
+        if not self.parent.main_obj:
+            print ("Please Load JSON files first")
+            return
+        
+        self.crystal_count_dict = self.parent.main_obj.get_crystal_counts()
+        
+
+        series = QPieSeries()
+        counts = self.crystal_count_dict[img_name]
+
+        color_map = {
+                "Pyroxene" : QColor("#00FFFF"),
+                "Olivine" : QColor("#1e90ff"),
+                "Feldspar" : QColor("#FF00FF")
+        }
+
+
+        for key, value in counts.items():
+            slice = series.append(key, value)
+            slice.setBrush(color_map[key])
+
+        chart = QChart()
+        chart.addSeries(series)
+        chart.createDefaultAxes()
+        chart.setTitle("Crystal Counts Pie Chart")
+
+        chartview = QChartView(chart)
+        self.layout.addWidget(chartview)
+        
+
         
 
 class MainWindow(QWidget):
@@ -189,7 +238,7 @@ if __name__ == '__main__':
 '''
 TO DO:
 - [DONE] Organize Tabs
-- Populate scales section with JSON values
+- [DONE] Populate scales section with JSON values
 - Allow user to write scales next to image names -> save and write to scales file
 - Connect button click events with Main functions (should run after "save images" button pressed)
 - Make new tab that has drop down menu -> calls crystal area frac func & show pie chart
@@ -207,4 +256,10 @@ TO DO:
 
 - Streamline ability to add functions/checkboxes later on???
 
+'''
+
+
+'''
+Questions:
+Will all images in image group (ex. NA165-136) have the same scaling? Otherwise, in scales.json, would have to do them all individually.
 '''

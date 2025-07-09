@@ -116,7 +116,6 @@ class Main:
 
 #fitting ellipses around annotations
 #Open cv limitation >5 points to make an elliipse. section in graph that say able to ellipse XX/XX total annotations
-
     def make_ellipse_scatter(self, filesave_path):
         for key in self.point_dict.keys():
 
@@ -171,11 +170,30 @@ class Main:
 
             plt.savefig(os.path.join(filesave_path, f"{key}_axes_graph.png"))
                     
-    
+    #calculates the crystal area fraction (percent?)
     def calculate_crystal_area_frac(self):
         image_area = self.width * self.height
         #add calculation :), return dict
+
+    #returns a dictionary with image name as key and corresponding dictionary of crystal:counts as value
+    def get_crystal_counts(self):
+        crystal_count_dict = {}
+
+        for key in self.point_dict.keys():
+            crystal_counts = {
+                "Pyroxene" : 0,
+                "Olivine" : 0,
+                "Feldspar" : 0
+            }
+            for entry in self.point_dict[key]:
+                crystal_counts[entry[1]] += 1
+            
+            crystal_count_dict[key] = crystal_counts
+
+
+        return crystal_count_dict
             
 
-test = Main("C:/Users/madis/annotations_test.json", "C:/Users/madis/scales.txt")
-#test.make_perimeter_hist("C:/Users/madis/image_outlines")
+#test = Main("C:/Users/madis/annotations_test.json", "C:/Users/madis/scales.txt")
+#dict = test.get_crystal_counts()
+#print(dict)
