@@ -55,6 +55,9 @@ class MainWindow(QWidget):
         self.AR_checkbox = QCheckBox(text="Aspect Ratio Graph")
         self.area_checkbox.stateChanged.connect(self.area_graph_selected)
 
+        #save button
+        self.save_btn = QPushButton("Save Images")
+        self.save_btn.clicked.connect(self.save_images)
 
         #adding to graphs layout
         self.graphs.layout.addWidget(QLabel("Select Save Filepath:"), 0, 0)
@@ -62,6 +65,7 @@ class MainWindow(QWidget):
         self.graphs.layout.addWidget(self.area_checkbox, 3, 0)
         self.graphs.layout.addWidget(self.perimeter_checkbox, 4, 0)
         self.graphs.layout.addWidget(self.AR_checkbox, 5, 0)
+        self.graphs.layout.addWidget(self.save_btn)
 
         self.graphs.setLayout(self.graphs.layout)
 
@@ -97,6 +101,8 @@ class MainWindow(QWidget):
             print("no area graph")
 
 
+    def save_images(self):
+        print("Saved Images")
 
 
 if __name__ == '__main__':
@@ -104,3 +110,10 @@ if __name__ == '__main__':
     window = MainWindow()
     #exit out of window
     app.exec()
+
+
+#always show crystal area fraction and proportion of crystal to each other, # of crystals, point counts 
+#crystal area fraction : total area of crystal/total area of image (total area of image found in image youre creating)
+    # sum of all areas from JSON (separately!!) /width and height from outline func
+    # should have three values & mult by 100 to get %
+    # pie chart of 3 crystals (counts) just in gui ^^
