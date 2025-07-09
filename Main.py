@@ -10,14 +10,14 @@ import cv2
 class Main:
 
     def __init__(self, json_path, scales_path):
-        with open(json_path, 'r') as file: #have them open file
+        #Opens JSON annotation file
+        with open(json_path, 'r') as file:
             self.data = json.load(file)
         self.point_dict = {}
 
-        with open(scales_path, "r+"):
-            self.scale = {
-                "NA165_136": 2.97
-            }
+        #opens scales JSON file -> in format "Image_Name": number
+        with open(scales_path, "r+") as f:
+            self.scales_dict = json.load(f)
 
         self.colors = {
                 "Pyroxene" : "cyan",
@@ -28,15 +28,14 @@ class Main:
         #image width and height
         self.width, self.height = 1920, 1200
 
-    #37-46 index for sample
-    #48-54 index for image #
-    #histograms for each image -> area and perimeter distributions, long and short axis, fit an ellipse
-
+        #populates point_dict
         for key in self.data.keys():
             point_list = []
             for i in range(len(self.data[key])):        
                 point_list.append((self.data[key][i]["points"], self.data[key][i]["label_short_code"], self.data[key][i]["perimeter"], self.data[key][i]["area"]))
             
+            #37-46 index for sample
+            #48-54 index for image #
             self.point_dict[key[38:47] + "_" + key[48:54]] = point_list
 
 
@@ -178,5 +177,5 @@ class Main:
         #add calculation :), return dict
             
 
-test = Main("C:/Users/madis/annotations_test.json")
-test.make_perimeter_hist("C:/Users/madis/image_outlines")
+test = Main("C:/Users/madis/annotations_test.json", "C:/Users/madis/scales.txt")
+#test.make_perimeter_hist("C:/Users/madis/image_outlines")
