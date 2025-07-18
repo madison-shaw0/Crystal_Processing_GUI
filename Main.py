@@ -25,8 +25,11 @@ class Main:
                 "Feldspar" : "magenta"
         }
 
-        #image width and height
-        self.width, self.height = 1920, 1200
+        #image width and height in nanometers
+        self.width, self.height = 1920, 1200 
+    
+        # 42 nm/px
+        self.scale = 42
 
         #populates point_dict
         for key in self.data.keys():
@@ -59,6 +62,7 @@ class Main:
 
 #Creating Area Histogram - One image with 3 separate histograms for each crystal
     def make_area_hist(self, filesave_path):
+        
         for key in self.point_dict.keys():
 
             areas_by_label = {
@@ -69,14 +73,18 @@ class Main:
 
             #dictionary with each crystal having list of areas from image
             for entry in self.point_dict[key]:
-                areas_by_label[entry[1]].append(entry[3])
+                label = entry[1]
+                area_px2 = entry[3]
+                area_nm2 = area_px2 * self.scale * self.scale
+                areas_by_label[label].append(area_nm2)
+
             
             fig, axs = plt.subplots (1, 3, figsize = (18, 5), sharey=True)
 
             for ax, (label, areas) in zip(axs, areas_by_label.items()):
                 ax.hist(areas, bins = 10, color = self.colors[label])
                 ax.set_title(label)
-                ax.set_xlabel("Area")
+                ax.set_xlabel("Area (nm²)")
                 ax.set_ylabel("Frequency")
                 ax.grid(True)
 
@@ -98,14 +106,17 @@ class Main:
 
             #dictionary with each crystal having list of perimeters from image
             for entry in self.point_dict[key]:
-                perimeters_by_label[entry[1]].append(entry[2])
+                label = entry[1]
+                perimeter_px = entry[2]
+                perimeter_nm = perimeter_px * self.scale
+                perimeters_by_label[label].append(perimeter_nm)
             
             fig, axs = plt.subplots (1, 3, figsize = (18, 5), sharey=True)
 
             for ax, (label, perimeters) in zip(axs, perimeters_by_label.items()):
                 ax.hist(perimeters, bins = 10, color = self.colors[label])
                 ax.set_title(label)
-                ax.set_xlabel("Perimeter")
+                ax.set_xlabel("Perimeter (nm)")
                 ax.set_ylabel("Frequency")
                 ax.grid(True)
 
@@ -115,7 +126,7 @@ class Main:
 
 
 #fitting ellipses around annotations
-#Open cv limitation >5 points to make an elliipse. section in graph that say able to ellipse XX/XX total annotations
+#Open cv limitation >5 points to make an ellipse. section in graph that say able to ellipse XX/XX total annotations
     def make_ellipse_scatter(self, filesave_path):
         for key in self.point_dict.keys():
 
@@ -142,8 +153,8 @@ class Main:
                     ellipse = cv2.fitEllipse(pts)
 
                     axes= ellipse[1]
-                    ellipses_by_label[entry[1]]["major_axis_list"].append(max(axes))
-                    ellipses_by_label[entry[1]]["minor_axis_list"].append(min(axes))
+                    ellipses_by_label[entry[1]]["major_axis_list"].append(max(axes) * self.scale)
+                    ellipses_by_label[entry[1]]["minor_axis_list"].append(min(axes) * self.scale)
 
             
             fig, axs = plt.subplots (1, 3, figsize = (18, 5), sharey=True)
@@ -151,8 +162,8 @@ class Main:
             for ax, (label, axes) in zip(axs, ellipses_by_label.items()):
                 ax.scatter(axes["major_axis_list"], axes["minor_axis_list"], color = self.colors[label])
                 ax.set_title(label)
-                ax.set_xlabel("Major Axis")
-                ax.set_ylabel("Minor Axis")
+                ax.set_xlabel("Major Axis (nm)")
+                ax.set_ylabel("Minor Axis (nm)")
                 ax.grid(True)
 
                 slopes = [0.2, 0.4, 0.8, 1.0, 1.5, 2]
@@ -169,11 +180,31 @@ class Main:
             fig.suptitle(f"AR - {key}")
 
             plt.savefig(os.path.join(filesave_path, f"{key}_axes_graph.png"))
-                    
-    #calculates the crystal area fraction (percent?)
-    def calculate_crystal_area_frac(self):
+
+
+    #calculates the crystal area fraction
+    def get_crystal_area_frac(self):
         image_area = self.width * self.height
-        #add calculation :), return dict
+        
+        crystal_areas_dict = {}
+
+        for key in self.point_dict.keys():
+            crystal_areas = {
+                "Pyroxene" : 0,
+                "Olivine" : 0,
+                "Feldspar" : 0,
+                "Total Crystal Area": 0
+            }
+            for entry in self.point_dict[key]:
+                crystal_areas[entry[1]] += (entry[3]/image_area)*100
+
+            crystal_areas["Total Crystal Area"] += crystal_areas["Pyroxene"] + crystal_areas["Olivine"] + crystal_areas["Feldspar"]
+
+            crystal_areas_dict[key] = crystal_areas
+
+        return crystal_areas_dict
+
+        
 
     #returns a dictionary with image name as key and corresponding dictionary of crystal:counts as value
     def get_crystal_counts(self):
@@ -194,6 +225,7 @@ class Main:
         return crystal_count_dict
             
 
-#test = Main("C:/Users/madis/annotations_test.json", "C:/Users/madis/scales.txt")
-#dict = test.get_crystal_counts()
-#print(dict)
+test = Main("C:/Users/madis/CoralNet_Project/annotations_test.json", "C:/Users/madis/crystal_processing/scales.json")
+# test.make_area_hist("C:/Users/madis/image_outlines")
+# test.make_perimeter_hist("C:/Users/madis/image_outlines")
+# test.make_ellipse_scatter("C:/Users/madis/image_outlines")

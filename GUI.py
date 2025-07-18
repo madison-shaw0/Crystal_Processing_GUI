@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox
+from PyQt5.QtWidgets import QApplication, QComboBox, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox
 from PyQt5.QtChart import QChart, QChartView, QPieSeries, QPieSlice
 from PyQt5.QtGui import QColor
 from pathlib import Path
@@ -16,16 +16,25 @@ class GraphsTab(QWidget):
         self.area_checkbox = QCheckBox(text="Area Graph")
         self.perimeter_checkbox = QCheckBox(text="Perimeter Graph")
         self.AR_checkbox = QCheckBox(text="Aspect Ratio Graph")
-        self.area_checkbox.stateChanged.connect(self.area_graph_selected)
         self.image_outline_checkbox = QCheckBox(text = "Image Outline")
 
         #save button
         self.save_btn = QPushButton("Save Images")
         self.save_btn.clicked.connect(self.save_images)
 
+        #folder path
+        self.folder_path = QLineEdit()
+        self.browse_btn = QPushButton("Browse")
+        self.browse_btn.clicked.connect(lambda: self.pick_folder(self.folder_path))
+
+
         #adding to graphs layout
-        layout.addWidget(QLabel("Select Save Filepath:"), 0, 0)
+        layout.addWidget(QLabel("Select Save Folder:"), 0, 0)
+        layout.addWidget(self.folder_path, 0, 1)
+        layout.addWidget(self.browse_btn, 0, 3)
+
         layout.addWidget(QLabel("Select graphs:"), 2, 0)
+
         layout.addWidget(self.area_checkbox, 3, 0)
         layout.addWidget(self.perimeter_checkbox, 4, 0)
         layout.addWidget(self.AR_checkbox, 5, 0)
@@ -34,15 +43,32 @@ class GraphsTab(QWidget):
 
         self.setLayout(layout)
 
-    def area_graph_selected(self): #base GUI design off main class -> list of available graphs. one func for all
-        if self.area_checkbox.isChecked():
-            print("area graph")
-        else:
-            print("no area graph")
 
+    def pick_folder(self, target_line_edit):
+        folder = QFileDialog.getExistingDirectory(self, "Select Folder")
+        
+        if folder:
+            path = Path(folder)
+            target_line_edit.setText(str(path))
 
+    #When save images button clicked -> if any of these are checked, runs Main class functions that create + save graphs
     def save_images(self):
-        print("Saved Images")   
+        save_folder_path = self.folder_path.text()
+
+        if self.area_checkbox.isChecked():
+            self.parent.main_obj.make_area_hist(save_folder_path)
+            print("Saved area graph")
+
+        if self.perimeter_checkbox.isChecked():
+            self.parent.main_obj.make_perimeter_hist(save_folder_path)
+            print("Saved perimeter graph")
+
+        if self.AR_checkbox.isChecked():
+            self.parent.main_obj.make_ellipse_scatter(save_folder_path)
+            print("Saved AR graphs")
+        if self.image_outline_checkbox.isChecked():
+            self.parent.main_obj.make_outlines(save_folder_path)
+            print("Saved outline images")   
 
 
 class MainTab(QWidget):
@@ -114,6 +140,7 @@ class MainTab(QWidget):
             print ("Main object created and stored")
         
         self.load_scales()
+        self.parent.info_tab.update_info()
 
 
 
@@ -146,11 +173,25 @@ class InfoTab(QWidget):
         self.layout=QGridLayout()
         self.setLayout(self.layout)
 
-        test_btn = QPushButton("press me!!")
-        test_btn.clicked.connect(lambda: self.create_pie_chart("NA165-184_Image5"))
+        self.image_selector = QComboBox()
+        self.image_selector.addItem(" ")
+        self.image_selector.currentTextChanged.connect(lambda: self.display_graphs(self.image_selector.currentText()))
         
-        self.layout.addWidget(test_btn, 0, 0)
+        self.layout.addWidget(QLabel("Select Image: "), 0, 0)
+        self.layout.addWidget(self.image_selector, 0, 1)
+
+
+    def update_info(self):
+        if not self.parent.main_obj:
+            print ("Please Load JSON files first")
+            return
         
+        image_names = self.parent.main_obj.point_dict.keys()
+        self.image_selector.addItems(image_names)
+        
+    def display_graphs(self, img_name):
+        self.create_pie_chart(img_name)
+        self.get_img_area_frac(img_name)
 
     def create_pie_chart(self, img_name):
         if not self.parent.main_obj:
@@ -177,10 +218,28 @@ class InfoTab(QWidget):
         chart = QChart()
         chart.addSeries(series)
         chart.createDefaultAxes()
-        chart.setTitle("Crystal Counts Pie Chart")
+        chart.setTitle(f"Crystal Counts Pie Chart: {img_name}")
 
         chartview = QChartView(chart)
         self.layout.addWidget(chartview)
+
+        self.get_img_area_frac(img_name)
+
+
+
+    def get_img_area_frac(self, img_name):
+        if not self.parent.main_obj:
+            print ("Please Load JSON files first")
+            return
+        
+        self.crystal_areas = self.parent.main_obj.get_crystal_area_frac()
+
+        i = 2
+        for key, value in self.crystal_areas[img_name].items():
+            self.layout.addWidget(QLabel(key), i, 0)
+            self.layout.addWidget(QLabel(str(value)), i, 1)
+            i+=1
+        
         
 
         
@@ -190,9 +249,6 @@ class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        #json_filepath = "C:/Users/madis/annotations_test.json"
-        #scales_filepath = "C:/Users/madis/scales.json"
-        #test
         self.main_obj = None
 
         self.setWindowTitle("Crystal Processing GUI")
@@ -201,11 +257,15 @@ class MainWindow(QWidget):
         layout = QGridLayout()
         self.tabs = QTabWidget()
 
+        self.main_tab = MainTab(self)
+        self.graphs_tab = GraphsTab(self)
+        self.info_tab = InfoTab(self)
+        
         #adding tabs to MainWindow
         self.tabs.setTabPosition(QTabWidget.North)
-        self.tabs.addTab(MainTab(self), "Main")
-        self.tabs.addTab(GraphsTab(self), "Graphs")
-        self.tabs.addTab(InfoTab(self), "Image Info")
+        self.tabs.addTab(self.main_tab, "Main")
+        self.tabs.addTab(self.graphs_tab, "Graphs")
+        self.tabs.addTab(self.info_tab, "Image Info")
     
 
 
@@ -240,11 +300,12 @@ TO DO:
 - [DONE] Organize Tabs
 - [DONE] Populate scales section with JSON values
 - Allow user to write scales next to image names -> save and write to scales file
-- Connect button click events with Main functions (should run after "save images" button pressed)
+- [DONE] Connect button click events with Main functions (should run after "save images" button pressed)
 - Make new tab that has drop down menu -> calls crystal area frac func & show pie chart
 
 - Crystal area fraction function (Main)
-- Pie chart of crystal counts function (Main)
+- [DONE] Pie chart of crystal counts function (Main)
+- Get Pie Chart to show numbers and label
 - Circularity Function (Main)
 - Solidity Function (Main)
 - Aspect Ratio Function (Main) -> is this different from Major vs minor axis
@@ -262,4 +323,5 @@ TO DO:
 '''
 Questions:
 Will all images in image group (ex. NA165-136) have the same scaling? Otherwise, in scales.json, would have to do them all individually.
+Would it be easier to have all checkboxes in graphs tab start checked?
 '''
