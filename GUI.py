@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QComboBox, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox
 from PyQt5.QtChart import QChart, QChartView, QPieSeries, QPieSlice
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QFont
 from pathlib import Path
 from Main import Main
 
@@ -20,6 +20,7 @@ class GraphsTab(QWidget):
 
         #save button
         self.save_btn = QPushButton("Save Images")
+        self.save_btn.setStyleSheet("background-color : #75BFEC")
         self.save_btn.clicked.connect(self.save_images)
 
         #folder path
@@ -33,13 +34,17 @@ class GraphsTab(QWidget):
         layout.addWidget(self.folder_path, 0, 1)
         layout.addWidget(self.browse_btn, 0, 3)
 
-        layout.addWidget(QLabel("Select graphs:"), 2, 0)
+        select_graphs_label = QLabel("Select graphs:")
+        select_graphs_label.setStyleSheet("font-size: 11pt; font-weight:bold;")
+        layout.addWidget(select_graphs_label, 2, 0)
 
         layout.addWidget(self.area_checkbox, 3, 0)
         layout.addWidget(self.perimeter_checkbox, 4, 0)
         layout.addWidget(self.AR_checkbox, 5, 0)
         layout.addWidget(self.image_outline_checkbox, 6, 0)
-        layout.addWidget(self.save_btn)
+        layout.addWidget(self.save_btn, 7, 1)
+
+        layout.setRowStretch(8, 1)
 
         self.setLayout(layout)
 
@@ -93,10 +98,12 @@ class MainTab(QWidget):
 
         #make Load JSON button
         json_load_btn = QPushButton ("Load JSONs")
+        json_load_btn.setStyleSheet("background-color : #75BFEC")
         json_load_btn.clicked.connect(self.load_files)
 
         # make Save Changes button
         save_changes_btn = QPushButton("Save Changes")
+        save_changes_btn.setStyleSheet("background-color : #75BFEC")
         save_changes_btn.clicked.connect(self.save_scale_values)
 
 
@@ -109,10 +116,12 @@ class MainTab(QWidget):
         self.layout.addWidget(self.save_filename_edit, 1, 1)
         self.layout.addWidget(file_save_btn, 1, 2)
 
-        self.layout.addWidget(json_load_btn, 2, 0)
+        self.layout.addWidget(json_load_btn, 2, 1)
 
-        self.layout.addWidget(QLabel('Scales'), 3, 0)
-        self.layout.addWidget(save_changes_btn, 3, 1)
+        scales_label = QLabel("Scales")
+        scales_label.setStyleSheet("font-size: 11pt; font-weight:bold;")
+        self.layout.addWidget(scales_label, 3, 0)
+        self.layout.addWidget(save_changes_btn, 3, 2)
 
         self.setLayout(self.layout)
 
@@ -190,8 +199,15 @@ class InfoTab(QWidget):
         self.image_selector.addItems(image_names)
         
     def display_graphs(self, img_name):
+        """ for i in reversed(range(self.layout.count())):
+            item = self.layout.itemAt(i)
+            widget = item.widget()
+            if widget and self.layout.getItemPosition(i)[0] != 0:  # keep row 0 (dropdown + label)
+                widget.setParent(None) """
+
+
         self.create_pie_chart(img_name)
-        self.get_img_area_frac(img_name)
+        self.get_crystal_area_percent(img_name)
 
     def create_pie_chart(self, img_name):
         if not self.parent.main_obj:
@@ -207,13 +223,17 @@ class InfoTab(QWidget):
         color_map = {
                 "Pyroxene" : QColor("#00FFFF"),
                 "Olivine" : QColor("#1e90ff"),
-                "Feldspar" : QColor("#FF00FF")
+                "Feldspar" : QColor("#FF00FF"),
+                "Vesicles" : QColor("#0AC90A")
         }
 
-
+        i = 0
         for key, value in counts.items():
             slice = series.append(key, value)
             slice.setBrush(color_map[key])
+
+            self.layout.addWidget(QLabel(f"{key}: {value}"), 2, i)
+            i+=1
 
         chart = QChart()
         chart.addSeries(series)
@@ -221,23 +241,24 @@ class InfoTab(QWidget):
         chart.setTitle(f"Crystal Counts Pie Chart: {img_name}")
 
         chartview = QChartView(chart)
-        self.layout.addWidget(chartview)
+        self.layout.addWidget(chartview, 0, 0)
 
-        self.get_img_area_frac(img_name)
+        self.get_crystal_area_percent(img_name)
 
 
 
-    def get_img_area_frac(self, img_name):
+    def get_crystal_area_percent(self, img_name):
         if not self.parent.main_obj:
             print ("Please Load JSON files first")
             return
         
-        self.crystal_areas = self.parent.main_obj.get_crystal_area_frac()
+        self.crystal_areas = self.parent.main_obj.get_crystal_area_percent()
 
-        i = 2
+        self.layout.addWidget(QLabel("Crystal Area Percentages: "), 3, 0)
+        i = 4
         for key, value in self.crystal_areas[img_name].items():
             self.layout.addWidget(QLabel(key), i, 0)
-            self.layout.addWidget(QLabel(str(value)), i, 1)
+            self.layout.addWidget(QLabel(str(f"{value:.2f}%")), i, 1)
             i+=1
         
         
@@ -311,7 +332,7 @@ TO DO:
 - Aspect Ratio Function (Main) -> is this different from Major vs minor axis
 - Elongation Function (Main)
 
-- Change initial window size
+- [Change initial window size
 - fix spacing
 
 

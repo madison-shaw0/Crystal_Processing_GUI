@@ -6,6 +6,7 @@ import numpy as np
 import math
 import json
 import cv2
+import re
 
 class Main:
 
@@ -22,14 +23,15 @@ class Main:
         self.colors = {
                 "Pyroxene" : "cyan",
                 "Olivine" : "dodgerblue",
-                "Feldspar" : "magenta"
+                "Feldspar" : "magenta",
+                "Vesicles" : "green"
         }
 
         #image width and height in nanometers
         self.width, self.height = 1920, 1200 
     
         # 42 nm/px
-        self.scale = 42
+        self.scale = 0.42969
 
         #populates point_dict
         for key in self.data.keys():
@@ -37,16 +39,27 @@ class Main:
             for i in range(len(self.data[key])):        
                 point_list.append((self.data[key][i]["points"], self.data[key][i]["label_short_code"], self.data[key][i]["perimeter"], self.data[key][i]["area"]))
             
-            #37-46 index for sample
+            #37-46 index for sample  --> Probably fix this: not the same for every image?
             #48-54 index for image #
-            self.point_dict[key[38:47] + "_" + key[48:54]] = point_list
+            img_name = os.path.basename(key)
+            folder_path = os.path.dirname(key)
+            match = re.search(r"NA\d+-\d+", key)
+            if not match:
+                print("NA is not in name of image")
+
+            na_code = match.group()
+            name_no_ext = os.path.splitext(img_name)[0]
+            clean_up = re.sub(r"_processing_\d+$", "", name_no_ext)
+
+            self.point_dict[f"{na_code}_{clean_up}"] = point_list   #key[38:47] + "_" + key[48:54]
+
 
 
 
 #Making outlines from JSON
     def make_outlines(self, filesave_path):
         
-        label = {'Pyroxene': 100, 'Olivine': 0, 'Feldspar': 200}
+        label = {'Pyroxene': 100, 'Olivine': 30, 'Feldspar': 150, 'Vesicles': 200}
         for key in self.point_dict.keys(): 
             image = Image.new("L", (self.width, self.height), color=255)  
             draw = ImageDraw.Draw(image)
@@ -58,6 +71,12 @@ class Main:
 
             image.save(os.path.join(filesave_path, f"{key}_outline.png"))
 
+# Uses Freedman–Diaconis Rule to generate appropriate bin width
+    def generate_bins(self, data):
+        n = len(data)
+        q75, q25 = np.percentile(data, [75, 25])
+        IQR = q75 - q25
+        return 2*(IQR/(n**(1/3)))
 
 
 #Creating Area Histogram - One image with 3 separate histograms for each crystal
@@ -68,7 +87,8 @@ class Main:
             areas_by_label = {
                 "Pyroxene" : [],
                 "Olivine" : [],
-                "Feldspar" : []
+                "Feldspar" : [],
+                "Vesicles" : []
             }
 
             #dictionary with each crystal having list of areas from image
@@ -82,13 +102,20 @@ class Main:
             fig, axs = plt.subplots (1, 3, figsize = (18, 5), sharey=True)
 
             for ax, (label, areas) in zip(axs, areas_by_label.items()):
-                ax.hist(areas, bins = 10, color = self.colors[label])
-                ax.set_title(label)
-                ax.set_xlabel("Area (nm²)")
-                ax.set_ylabel("Frequency")
-                ax.grid(True)
+                
+                if len(areas) > 3: #idk why 3
+                    binwidth = min(self.generate_bins(areas), (max(areas) - min(areas)) / 10) #self.generate_bins(areas)
+                    
+                    bins = np.arange(min(areas), max(areas) + binwidth, binwidth) 
+                else:
+                    bins = 10
+                ax.hist(areas, bins = bins, color = self.colors[label])
+                ax.set_title(label, fontsize=14)
+                ax.set_xlabel("Area (um²)", fontsize=14)
+                ax.set_ylabel("Frequency", fontsize=14)
+                #ax.grid(True)
 
-            fig.suptitle(f"Area Distribution by Crystal - {key}")
+            fig.suptitle(f"Area Distribution by Crystal - {key}", fontsize=20)
 
             plt.savefig(os.path.join(filesave_path, f"{key}_area_graph.png"))
 
@@ -101,7 +128,8 @@ class Main:
             perimeters_by_label = {
                 "Pyroxene" : [],
                 "Olivine" : [],
-                "Feldspar" : []
+                "Feldspar" : [],
+                "Vesicles" : []
             }
 
             #dictionary with each crystal having list of perimeters from image
@@ -114,13 +142,14 @@ class Main:
             fig, axs = plt.subplots (1, 3, figsize = (18, 5), sharey=True)
 
             for ax, (label, perimeters) in zip(axs, perimeters_by_label.items()):
-                ax.hist(perimeters, bins = 10, color = self.colors[label])
-                ax.set_title(label)
-                ax.set_xlabel("Perimeter (nm)")
-                ax.set_ylabel("Frequency")
-                ax.grid(True)
+                ax.hist(perimeters, bins = 25, color = self.colors[label])
+                ax.set_title(label, fontsize=14)
+                ax.set_xlabel("Perimeter (um)", fontsize=14)
+                
+                ax.set_ylabel("Frequency", fontsize=14)
+                #ax.grid(True)
 
-            fig.suptitle(f"Perimeter Distribution by Crystal - {key}")
+            fig.suptitle(f"Perimeter Distribution by Crystal - {key}", fontsize=20)
 
             plt.savefig(os.path.join(filesave_path, f"{key}_perimeter_graph.png"))
 
@@ -143,6 +172,10 @@ class Main:
                     "major_axis_list": [],
                     "minor_axis_list": []
                 }, 
+                "Vesicles": {
+                    "major_axis_list": [],
+                    "minor_axis_list": []
+                },
             }
             
 
@@ -161,10 +194,10 @@ class Main:
 
             for ax, (label, axes) in zip(axs, ellipses_by_label.items()):
                 ax.scatter(axes["major_axis_list"], axes["minor_axis_list"], color = self.colors[label])
-                ax.set_title(label)
-                ax.set_xlabel("Major Axis (nm)")
-                ax.set_ylabel("Minor Axis (nm)")
-                ax.grid(True)
+                ax.set_title(label, fontsize=14)
+                ax.set_xlabel("Major Axis (um)", fontsize=14)
+                ax.set_ylabel("Minor Axis (um)", fontsize=14)
+                #ax.grid(True)
 
                 slopes = [0.2, 0.4, 0.8, 1.0, 1.5, 2]
                 x_min, x_max = ax.get_xlim()
@@ -177,13 +210,13 @@ class Main:
                 
 
 
-            fig.suptitle(f"AR - {key}")
+            fig.suptitle(f"AR - {key}", fontsize=20)
 
             plt.savefig(os.path.join(filesave_path, f"{key}_axes_graph.png"))
 
 
     #calculates the crystal area fraction
-    def get_crystal_area_frac(self):
+    def get_crystal_area_percent(self):
         image_area = self.width * self.height
         
         crystal_areas_dict = {}
@@ -193,12 +226,13 @@ class Main:
                 "Pyroxene" : 0,
                 "Olivine" : 0,
                 "Feldspar" : 0,
+                "Vesicles" : 0,
                 "Total Crystal Area": 0
             }
             for entry in self.point_dict[key]:
                 crystal_areas[entry[1]] += (entry[3]/image_area)*100
 
-            crystal_areas["Total Crystal Area"] += crystal_areas["Pyroxene"] + crystal_areas["Olivine"] + crystal_areas["Feldspar"]
+            crystal_areas["Total Crystal Area"] += crystal_areas["Pyroxene"] + crystal_areas["Olivine"] + crystal_areas["Feldspar"] + crystal_areas["Vesicles"]
 
             crystal_areas_dict[key] = crystal_areas
 
@@ -214,7 +248,8 @@ class Main:
             crystal_counts = {
                 "Pyroxene" : 0,
                 "Olivine" : 0,
-                "Feldspar" : 0
+                "Feldspar" : 0,
+                "Vesicles" : 0
             }
             for entry in self.point_dict[key]:
                 crystal_counts[entry[1]] += 1
@@ -225,7 +260,12 @@ class Main:
         return crystal_count_dict
             
 
-test = Main("C:/Users/madis/CoralNet_Project/annotations_test.json", "C:/Users/madis/crystal_processing/scales.json")
-# test.make_area_hist("C:/Users/madis/image_outlines")
-# test.make_perimeter_hist("C:/Users/madis/image_outlines")
-# test.make_ellipse_scatter("C:/Users/madis/image_outlines")
+test = Main("C:/Users/madis/CoralNet_Project/Ahyi_1/NA171-049_Stitched_Image_Annotations.json", "C:/Users/madis/crystal_processing/scales.json")
+#print(test.get_crystal_area_percent())
+#test.make_area_hist("C:/Users/madis/image_outlines")
+#test.make_perimeter_hist("C:/Users/madis/image_outlines")
+#test.make_ellipse_scatter("C:/Users/madis/image_outlines")
+# test.make_outlines("C:/Users/madis/image_outlines")
+
+
+#FIX Histogram bins!!!!!
