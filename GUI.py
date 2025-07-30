@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QApplication, QComboBox, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox
+from PyQt5.QtWidgets import QApplication, QComboBox, QSizePolicy, QSpacerItem, QMainWindow, QGridLayout, QWidget, QFileDialog, QPushButton, QLineEdit, QLabel, QTabWidget, QCheckBox, QVBoxLayout, QHBoxLayout
+from PyQt5.QtCore import Qt
 from PyQt5.QtChart import QChart, QChartView, QPieSeries, QPieSlice
 from PyQt5.QtGui import QColor, QFont
 from pathlib import Path
@@ -179,7 +180,7 @@ class InfoTab(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
-        self.layout=QGridLayout()
+        """ self.layout=QGridLayout()
         self.setLayout(self.layout)
 
         self.image_selector = QComboBox()
@@ -187,7 +188,39 @@ class InfoTab(QWidget):
         self.image_selector.currentTextChanged.connect(lambda: self.display_graphs(self.image_selector.currentText()))
         
         self.layout.addWidget(QLabel("Select Image: "), 0, 0)
-        self.layout.addWidget(self.image_selector, 0, 1)
+        self.layout.addWidget(self.image_selector, 0, 1) """
+
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        dropdown_layout = QHBoxLayout()
+        dropdown_layout.addWidget(QLabel("Select Image: "))
+        self.image_selector = QComboBox()
+        self.image_selector.addItem(" ")
+        self.image_selector.currentTextChanged.connect(lambda: self.display_graphs(self.image_selector.currentText()))
+        dropdown_layout.addWidget(self.image_selector)
+
+        self.layout.addLayout(dropdown_layout)
+
+        self.chart_container = QWidget()
+        self.chart_layout = QVBoxLayout()
+        self.chart_container.setLayout(self.chart_layout)
+
+        self.counts_container = QWidget()
+        self.counts_layout = QHBoxLayout()
+        self.counts_container.setLayout(self.counts_layout)
+
+        self.percent_container = QWidget()
+        self.percent_layout = QGridLayout()
+        self.percent_layout.setColumnStretch(2, 1)
+        self.percent_container.setLayout(self.percent_layout)
+
+        
+        self.layout.addWidget(self.chart_container, alignment=Qt.AlignCenter)
+        self.layout.addWidget(self.counts_container, alignment=Qt.AlignCenter)
+        self.layout.addWidget(self.percent_container)
+        #self.layout.addItem(QSpacerItem(0, 0, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
 
 
     def update_info(self):
@@ -232,7 +265,7 @@ class InfoTab(QWidget):
             slice = series.append(key, value)
             slice.setBrush(color_map[key])
 
-            self.layout.addWidget(QLabel(f"{key}: {value}"), 2, i)
+            self.counts_layout.addWidget(QLabel(f"{key}: {value}"))
             i+=1
 
         chart = QChart()
@@ -241,9 +274,10 @@ class InfoTab(QWidget):
         chart.setTitle(f"Crystal Counts Pie Chart: {img_name}")
 
         chartview = QChartView(chart)
-        self.layout.addWidget(chartview, 0, 0)
+        chartview.setMinimumSize(700, 600)
+        self.chart_layout.addWidget(chartview)
 
-        self.get_crystal_area_percent(img_name)
+        #self.get_crystal_area_percent(img_name)
 
 
 
@@ -254,12 +288,14 @@ class InfoTab(QWidget):
         
         self.crystal_areas = self.parent.main_obj.get_crystal_area_percent()
 
-        self.layout.addWidget(QLabel("Crystal Area Percentages: "), 3, 0)
-        i = 4
+        self.percent_layout.addWidget(QLabel("Crystal Area Percentages: "), 0, 0, 1, 2)
+
+        i = 1
         for key, value in self.crystal_areas[img_name].items():
-            self.layout.addWidget(QLabel(key), i, 0)
-            self.layout.addWidget(QLabel(str(f"{value:.2f}%")), i, 1)
+            self.percent_layout.addWidget(QLabel(key), i, 0)
+            self.percent_layout.addWidget(QLabel(str(f"{value:.2f}%")), i, 1)
             i+=1
+            
         
         
 
